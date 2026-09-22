@@ -12,15 +12,9 @@ jobs:
       image: devkitpro/devkitarm:latest
 
     steps:
-      - name: Recuperer le projet
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Recuperer le Makefile officiel devkitPro
-        run: |
-          git clone --depth 1 https://github.com/devkitPro/nds-examples.git /tmp/nds-examples
-          cp /tmp/nds-examples/hello_world/Makefile ./Makefile
-
-      - name: Creer le jeu
+      - name: Construire
         run: |
           mkdir -p source
 
@@ -32,43 +26,23 @@ jobs:
           {
               consoleDemoInit();
 
-              bool started = false;
-
               while (pmMainLoop())
               {
                   scanKeys();
 
-                  int pressed = keysDown();
-
                   consoleClear();
 
                   iprintf("\n\n");
-                  iprintf("       ADRIANO DS\n");
-                  iprintf("\n");
-                  iprintf("    FOOTBALL PROJECT\n");
-                  iprintf("\n\n");
-
-                  if (!started)
-                  {
-                      iprintf("    NOUVELLE PARTIE\n");
-                      iprintf("\n");
-                      iprintf("    Appuie sur A");
-                  }
-                  else
-                  {
-                      iprintf("    ADRIANO\n");
-                      iprintf("\n");
-                      iprintf("    NUMERO 10\n");
-                      iprintf("\n");
-                      iprintf("    ELEMENT : GLACE\n");
-                      iprintf("\n");
-                      iprintf("    ECLAT POLAIRE\n");
-                      iprintf("\n");
-                      iprintf("    Prototype DS");
-                  }
-
-                  if (pressed & KEY_A)
-                      started = true;
+                  iprintf("================================\n");
+                  iprintf("        ADRIANO DS\n");
+                  iprintf("================================\n\n");
+                  iprintf("      PROTOTYPE FOOTBALL\n\n");
+                  iprintf("      NUMERO 10\n");
+                  iprintf("      ELEMENT : GLACE\n\n");
+                  iprintf("      ECLAT POLAIRE\n\n");
+                  iprintf("================================\n");
+                  iprintf("      A : CONTINUER\n");
+                  iprintf("================================\n");
 
                   swiWaitForVBlank();
               }
@@ -77,11 +51,15 @@ jobs:
           }
           EOF
 
-      - name: Compiler le NDS
-        run: make
+          git clone --depth 1 https://github.com/devkitPro/nds-examples.git /tmp/nds-examples
+          cp /tmp/nds-examples/hello_world/Makefile Makefile
 
-      - name: Verifier le NDS
-        run: test -s Adriano-DS.nds
+          sed -i 's/^TARGET :=.*/TARGET := Adriano-DS/' Makefile
+          sed -i 's/^SOURCES :=.*/SOURCES := source/' Makefile
+
+          make
+
+          test -s Adriano-DS.nds
 
       - name: Recuperer le NDS
         uses: actions/upload-artifact@v4
