@@ -1,255 +1,124 @@
-name: Build Adriano DS
+#include <nds.h>
+#include <gl2d.h>
+#include <stdio.h>
 
-on:
-  workflow_dispatch:
-  push:
+int main() {
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
+    lcdMainOnTop();
 
-    steps:
-      - name: Installer les outils
-        run: |
-          git clone --depth 1 https://github.com/devkitPro/nds-examples.git
-          cp nds-examples/templates/arm9/Makefile Makefile
-          mkdir -p source
+    // Ecran du haut en 3D/2D
+    videoSetMode(MODE_0_3D);
+    glScreen2D();
 
-      - name: Configurer le projet
-        run: |
-          sed -i 's/^TARGET.*/TARGET := Adriano-DS/' Makefile
-          sed -i 's/^SOURCES.*/SOURCES := source/' Makefile
+    int x = 120;
+    int y = 100;
+    int ballX = 150;
+    int ballY = 100;
+    int score = 0;
 
-      - name: Créer le jeu
-        run: |
-          cat > source/main.cpp <<'EOF'
-          #include <nds.h>
-          #include <gl2d.h>
-          #include <stdio.h>
+    while (pmMainLoop()) {
 
-          static int px = 70, py = 135;
-          static int bx = 115, by = 135;
-          static int bvx = 0, bvy = 0;
-          static int score = 0;
-          static int special = 0;
+        scanKeys();
 
-          static const int GREEN = RGB15(10,24,8);
-          static const int GREEN2 = RGB15(8,20,6);
-          static const int WHITE = RGB15(31,31,31);
-          static const int BLUE = RGB15(6,12,28);
-          static const int ICE = RGB15(18,28,31);
-          static const int ICE2 = RGB15(8,20,31);
-          static const int RED = RGB15(31,5,6);
-          static const int BLACK = RGB15(2,2,3);
-          static const int SKIN = RGB15(25,16,10);
+        int held = keysHeld();
+        int down = keysDown();
 
-          static void box(int x1,int y1,int x2,int y2,int c) {
-              glBoxFilled(x1,y1,x2,y2,c);
-          }
+        // Déplacement du joueur
+        if (held & KEY_LEFT)  x -= 2;
+        if (held & KEY_RIGHT) x += 2;
+        if (held & KEY_UP)    y -= 2;
+        if (held & KEY_DOWN)  y += 2;
 
-          static void drawField() {
-              box(0,0,255,191,GREEN);
+        if (x < 15) x = 15;
+        if (x > 230) x = 230;
+        if (y < 25) y = 25;
+        if (y > 155) y = 155;
 
-              glLine(8,8,247,8,WHITE);
-              glLine(8,183,247,183,WHITE);
-              glLine(8,8,8,183,WHITE);
-              glLine(247,8,247,183,WHITE);
-              glLine(127,8,127,183,WHITE);
+        // Tir normal
+        if ((down & KEY_A) &&
+            ballX > x - 30 &&
+            ballX < x + 30 &&
+            ballY > y - 30 &&
+            ballY < y + 30) {
 
-              glLine(115,88,139,88,WHITE);
-              glLine(115,104,139,104,WHITE);
-              glLine(111,92,111,100,WHITE);
-              glLine(143,92,143,100,WHITE);
+            ballX += 12;
 
-              box(239,68,247,123,WHITE);
-              box(248,78,255,113,WHITE);
-              box(0,68,8,123,WHITE);
-              box(0,78,7,113,WHITE);
+            if (ballX > 250) {
+                ballX = 150;
+                score++;
+            }
+        }
 
-              glLine(205,45,247,45,WHITE);
-              glLine(205,147,247,147,WHITE);
-              glLine(205,45,205,147,WHITE);
-              glLine(8,45,50,45,WHITE);
-              glLine(8,147,50,147,WHITE);
-              glLine(50,45,50,147,WHITE);
-          }
+        // ICE STORM
+        if ((down & KEY_X)) {
+            ballX += 30;
 
-          static void drawPlayer(int x,int y) {
-              if (special) {
-                  glTriangleFilled(x,y-28,x-18,y-8,x+18,y-8,ICE);
-                  glTriangleFilled(x,y+28,x-18,y+8,x+18,y+8,ICE2);
-                  glTriangleFilled(x-25,y,x-8,y-18,x-8,y+18,ICE2);
-                  glTriangleFilled(x+25,y,x+8,y-18,x+8,y+18,ICE);
-              }
+            if (ballX > 250) {
+                ballX = 150;
+                score++;
+            }
+        }
 
-              box(x-8,y-29,x+8,y-20,WHITE);
-              box(x-11,y-25,x+10,y-17,WHITE);
+        // Fond vert
+        glClearColor(5, 20, 5, 31);
 
-              box(x-7,y-18,x+7,y-9,SKIN);
-              box(x-5,y-16,x-3,y-14,RED);
-              box(x+3,y-16,x+5,y-14,RED);
+        glBegin2D();
 
-              box(x-12,y-8,x+12,y+10,WHITE);
-              box(x+5,y-7,x+12,y+9,BLUE);
-              box(x-12,y+6,x-3,y+10,BLUE);
+        // Terrain
+        glBoxFilled(0, 0, 255, 191, RGB15(8, 24, 8));
 
-              box(x-11,y+10,x+11,y+21,BLUE);
-              box(x-9,y+18,x-1,y+23,BLUE);
-              box(x+1,y+18,x+9,y+23,BLUE);
+        // Lignes du terrain
+        glLine(8, 8, 247, 8, RGB15(31,31,31));
+        glLine(8, 183, 247, 183, RGB15(31,31,31));
+        glLine(8, 8, 8, 183, RGB15(31,31,31));
+        glLine(247, 8, 247, 183, RGB15(31,31,31));
+        glLine(127, 8, 127, 183, RGB15(31,31,31));
 
-              box(x-8,y+23,x-2,y+37,WHITE);
-              box(x+2,y+23,x+8,y+37,WHITE);
+        // But
+        glBoxFilled(242, 70, 250, 120, RGB15(31,31,31));
 
-              box(x-8,y+31,x-2,y+34,BLUE);
-              box(x+2,y+31,x+8,y+34,BLUE);
+        // Joueur n°10
+        glBoxFilled(x-8, y-25, x+8, y-10, RGB15(31,31,31));
+        glBoxFilled(x-7, y-10, x+7, y+5, RGB15(31,31,31));
+        glBoxFilled(x-11, y+5, x+11, y+20, RGB15(5,12,28));
 
-              box(x-10,y+36,x-1,y+40,BLUE);
-              box(x+1,y+36,x+11,y+40,BLUE);
-              box(x-11,y+39,x-2,y+41,BLACK);
-              box(x+2,y+39,x+12,y+41,BLACK);
-          }
+        // Cheveux blancs
+        glTriangleFilled(
+            x, y-35,
+            x-12, y-22,
+            x+12, y-22,
+            RGB15(31,31,31)
+        );
 
-          static void drawEnemy(int x,int y) {
-              box(x-7,y-16,x+7,y-8,SKIN);
-              box(x-10,y-8,x+10,y+8,RED);
-              box(x-9,y+8,x+9,y+20,BLACK);
-              box(x-7,y+20,x-2,y+34,WHITE);
-              box(x+2,y+20,x+7,y+34,WHITE);
-          }
+        // Yeux rouges
+        glBoxFilled(x-6, y-16, x-3, y-13, RGB15(31,0,0));
+        glBoxFilled(x+3, y-16, x+6, y-13, RGB15(31,0,0));
 
-          static void drawBall(int x,int y) {
-              box(x-4,y-4,x+4,y+4,WHITE);
-              box(x-1,y-1,x+1,y+1,BLACK);
-          }
+        // Jambes
+        glBoxFilled(x-7, y+20, x-2, y+35, RGB15(31,31,31));
+        glBoxFilled(x+2, y+20, x+7, y+35, RGB15(31,31,31));
 
-          static void updateBall() {
-              bx += bvx;
-              by += bvy;
+        // Ballon
+        glBoxFilled(
+            ballX-5,
+            ballY-5,
+            ballX+5,
+            ballY+5,
+            RGB15(31,31,31)
+        );
 
-              if (bvy > 0) bvy--;
-              if (bvy < 0) bvy++;
-              if (bvx > 0) bvx--;
-              if (bvx < 0) bvx--;
+        // Adversaire
+        glBoxFilled(195, 60, 207, 75, RGB15(31,0,0));
+        glBoxFilled(192, 75, 210, 95, RGB15(20,5,5));
+        glBoxFilled(195, 95, 200, 110, RGB15(31,31,31));
+        glBoxFilled(202, 95, 207, 110, RGB15(31,31,31));
 
-              if (bx > 250) {
-                  score++;
-                  bx = 115;
-                  by = 135;
-                  bvx = 0;
-                  bvy = 0;
-              }
+        glEnd2D();
 
-              if (bx < 5 || by < 10 || by > 180) {
-                  bx = 115;
-                  by = 135;
-                  bvx = 0;
-                  bvy = 0;
-              }
-          }
+        glFlush(0);
 
-          static void kick() {
-              int dy = 95 - by;
-              bvx = 6;
-              bvy = dy / 12;
-          }
+        swiWaitForVBlank();
+    }
 
-          int main() {
-              touchPosition touch;
-
-              lcdMainOnTop();
-              consoleDemoInit();
-
-              videoSetMode(MODE_0_3D);
-              glScreen2D();
-
-              iprintf("\x1b[1;2HADRIANO DS - MATCH");
-              iprintf("\x1b[3;1HNO.10  ICE  FW");
-              iprintf("\x1b[5;1HA = TIR");
-              iprintf("\x1b[6;1HX = ICE STORM");
-              iprintf("\x1b[7;1HSTYLET = DEPLACER");
-              iprintf("\x1b[9;1HSCORE : 0");
-
-              while (pmMainLoop()) {
-                  scanKeys();
-
-                  int held = keysHeld();
-                  int down = keysDown();
-
-                  if (held & KEY_LEFT)  px -= 2;
-                  if (held & KEY_RIGHT) px += 2;
-                  if (held & KEY_UP)    py -= 2;
-                  if (held & KEY_DOWN)  py += 2;
-
-                  if (held & KEY_TOUCH) {
-                      touchRead(&touch);
-
-                      if (touch.px < 250 && touch.py < 180) {
-                          px = touch.px;
-                          py = touch.py;
-                      }
-                  }
-
-                  if (px < 20) px = 20;
-                  if (px > 225) px = 225;
-                  if (py < 40) py = 40;
-                  if (py > 150) py = 150;
-
-                  int dx = bx - px;
-                  int dy = by - py;
-                  int close = (dx*dx + dy*dy < 32*32);
-
-                  if ((down & KEY_A) && close) {
-                      kick();
-                  }
-
-                  if ((down & KEY_X) && close) {
-                      special = 45;
-                      bvx = 8;
-                      bvy = (95 - by) / 8;
-                  }
-
-                  if (special > 0) special--;
-
-                  updateBall();
-
-                  glClearColor(3,10,3,31);
-                  
-
-                  glBegin2D();
-
-                  drawField();
-                  drawEnemy(200,82);
-                  drawPlayer(px,py);
-                  drawBall(bx,by);
-
-                  if (special) {
-                      box(72,12,184,28,BLUE);
-                  }
-
-                  glEnd2D();
-                  glFlush(0);
-
-                  iprintf("\x1b[9;10H%02d", score);
-
-                  swiWaitForVBlank();
-              }
-
-              return 0;
-          }
-          EOF
-
-      - name: Compiler
-        run: |
-          make -j2
-
-      - name: Vérifier le NDS
-        run: |
-          test -s Adriano-DS.nds
-          ls -lh Adriano-DS.nds
-
-      - name: Télécharger le build
-        uses: actions/upload-artifact@v4
-        with:
-          name: AdrianoDS
-          path: Adriano-DS.nds
+    return 0;
+}
