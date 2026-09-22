@@ -25,6 +25,7 @@ jobs:
         run: |
           cat > source/main.cpp <<'EOF'
           #include <nds.h>
+          #include <gl2d.h>
           #include <stdio.h>
 
           static int px = 70, py = 135;
