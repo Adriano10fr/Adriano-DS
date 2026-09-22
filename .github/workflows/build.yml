@@ -81,10 +81,10 @@ jobs:
         run: make
 
       - name: Verifier le NDS
-        run: test -s AdrianoDS.nds
+        run: test -s Adriano-DS.nds
 
       - name: Recuperer le NDS
         uses: actions/upload-artifact@v4
         with:
           name: AdrianoDS
-          path: AdrianoDS.nds
+          path: Adriano-DS.nds
