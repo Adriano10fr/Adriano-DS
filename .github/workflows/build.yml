@@ -12,10 +12,12 @@ jobs:
       image: devkitpro/devkitarm:latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Recuperer le projet
+        uses: actions/checkout@v4
 
-      - name: Construire
+      - name: Creer le prototype
         run: |
+          rm -rf source build Makefile
           mkdir -p source
 
           cat > source/main.cpp <<'EOF'
@@ -26,23 +28,42 @@ jobs:
           {
               consoleDemoInit();
 
+              iprintf("\x1b[2J");
+              iprintf("\x1b[3;5HADRIANO DS");
+              iprintf("\x1b[5;3H================");
+              iprintf("\x1b[7;4HPROTOTYPE FOOTBALL");
+              iprintf("\x1b[10;5HNOUVELLE PARTIE");
+              iprintf("\x1b[12;4HAppuie sur A");
+              iprintf("\x1b[15;4HAdriano - N°10");
+              iprintf("\x1b[16;4HElement : GLACE");
+
               while (pmMainLoop())
               {
                   scanKeys();
 
-                  consoleClear();
+                  int pressed = keysDown();
 
-                  iprintf("\n\n");
-                  iprintf("================================\n");
-                  iprintf("        ADRIANO DS\n");
-                  iprintf("================================\n\n");
-                  iprintf("      PROTOTYPE FOOTBALL\n\n");
-                  iprintf("      NUMERO 10\n");
-                  iprintf("      ELEMENT : GLACE\n\n");
-                  iprintf("      ECLAT POLAIRE\n\n");
-                  iprintf("================================\n");
-                  iprintf("      A : CONTINUER\n");
-                  iprintf("================================\n");
+                  if (pressed & KEY_A)
+                  {
+                      consoleClear();
+
+                      iprintf("\x1b[3;5HADRIANO");
+                      iprintf("\x1b[5;3H================");
+                      iprintf("\x1b[7;5HNUMERO 10");
+                      iprintf("\x1b[9;3HELEMENT : GLACE");
+                      iprintf("\x1b[12;3HTECHNIQUE :");
+                      iprintf("\x1b[14;4HECLAT POLAIRE");
+                      iprintf("\x1b[18;3HPrototype DS OK !");
+                  }
+
+                  if (pressed & KEY_B)
+                  {
+                      consoleClear();
+
+                      iprintf("\x1b[3;5HADRIANO DS");
+                      iprintf("\x1b[7;4HNOUVELLE PARTIE");
+                      iprintf("\x1b[10;4HAppuie sur A");
+                  }
 
                   swiWaitForVBlank();
               }
@@ -52,7 +73,7 @@ jobs:
           EOF
 
           git clone --depth 1 https://github.com/devkitPro/nds-examples.git /tmp/nds-examples
-          cp /tmp/nds-examples/hello_world/Makefile Makefile
+          cp /tmp/nds-examples/templates/arm9/Makefile Makefile
 
           sed -i 's/^TARGET :=.*/TARGET := Adriano-DS/' Makefile
           sed -i 's/^SOURCES :=.*/SOURCES := source/' Makefile
