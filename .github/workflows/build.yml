@@ -1,4 +1,4 @@
-name: Adriano DS - Aventure 2D
+name: Adriano DS - Test Graphique
 
 on:
   workflow_dispatch:
@@ -14,346 +14,171 @@ jobs:
       - name: Recuperer le projet
         uses: actions/checkout@v4
 
-      - name: Creer le jeu
+      - name: Creer le projet
         shell: bash
         run: |
           git clone --depth 1 https://github.com/devkitPro/nds-examples.git /tmp/nds-examples
-
           mkdir -p source
-
           cp /tmp/nds-examples/templates/arm9/Makefile Makefile
-
           sed -i 's/^TARGET.*/TARGET := Adriano-DS/' Makefile
           sed -i 's/^SOURCES.*/SOURCES := source/' Makefile
 
           cat > source/main.cpp <<'EOF'
-#include <nds.h>
-
-#define W 256
-#define H 192
-
-static int topBg;
-static int subBg;
-
-static int px = 128;
-static int py = 150;
-
-static bool dialogue = false;
-
-static inline u16 col(int r, int g, int b)
-{
-    return RGB15(r >> 3, g >> 3, b >> 3) | BIT(15);
-}
-
-static void put(u16 *v, int x, int y, u16 c)
-{
-    if (x < 0 || x >= W || y < 0 || y >= H)
-        return;
-
-    v[x + y * 256] = c;
-}
-
-static void box(u16 *v, int x, int y, int w, int h, u16 c)
-{
-    for (int yy = y; yy < y + h; yy++)
-        for (int xx = x; xx < x + w; xx++)
-            put(v, xx, yy, c);
-}
-
-static void tree(u16 *v, int x, int y)
-{
-    u16 trunk = col(95,55,30);
-    u16 leaf1 = col(35,130,55);
-    u16 leaf2 = col(55,165,65);
-
-    box(v, x - 3, y + 10, 6, 17, trunk);
-
-    for (int yy = -12; yy <= 12; yy++)
-    {
-        for (int xx = -14; xx <= 14; xx++)
-        {
-            if (xx * xx + yy * yy < 180)
-                put(v, x + xx, y + yy, leaf1);
-
-            if (xx * xx + yy * yy < 90)
-                put(v, x + xx, y + yy - 3, leaf2);
-        }
-    }
-}
-
-static void person(u16 *v, int x, int y, bool adriano, bool redHair)
-{
-    u16 black = col(20,20,25);
-    u16 skin = col(240,175,130);
-    u16 white = col(245,245,250);
-    u16 blue = col(35,90,170);
-    u16 darkBlue = col(20,45,100);
-    u16 red = col(180,40,45);
-    u16 hair = redHair ? red : (adriano ? white : col(35,45,60));
-
-    /* cheveux */
-    box(v, x - 7, y - 19, 14, 8, hair);
-    box(v, x - 9, y - 15, 18, 5, hair);
-
-    /* visage */
-    box(v, x - 6, y - 11, 12, 9, skin);
-
-    /* corps */
-    box(v, x - 9, y - 2, 18, 20, adriano ? white : blue);
-
-    /* col */
-    box(v, x - 3, y - 2, 6, 4, darkBlue);
-
-    /* yeux */
-    put(v, x - 3, y - 7, adriano ? red : black);
-    put(v, x + 2, y - 7, adriano ? red : black);
-
-    /* bras */
-    box(v, x - 13, y + 1, 4, 13, adriano ? white : blue);
-    box(v, x + 9, y + 1, 4, 13, adriano ? white : blue);
-
-    /* jambes */
-    box(v, x - 7, y + 18, 6, 13, darkBlue);
-    box(v, x + 1, y + 18, 6, 13, darkBlue);
-
-    /* chaussures */
-    box(v, x - 8, y + 30, 7, 3, black);
-    box(v, x + 1, y + 30, 7, 3, black);
-
-    /* numero 10 */
-    if (adriano)
-    {
-        box(v, x - 5, y + 6, 2, 7, blue);
-        box(v, x + 1, y + 6, 5, 2, blue);
-        box(v, x + 1, y + 9, 4, 2, blue);
-        box(v, x + 1, y + 12, 5, 2, blue);
-    }
-}
-
-static void school(u16 *v)
-{
-    u16 wall = col(210,180,120);
-    u16 wall2 = col(235,215,160);
-    u16 roof = col(35,65,110);
-    u16 door = col(55,45,40);
-    u16 gold = col(245,190,35);
-    u16 white = col(245,245,240);
-
-    box(v, 45, 5, 166, 50, wall);
-    box(v, 55, 15, 146, 40, wall2);
-
-    box(v, 42, 0, 172, 12, roof);
-
-    box(v, 105, 20, 46, 35, door);
-
-    box(v, 110, 22, 36, 28, col(45,45,50));
-
-    /* emblème */
-    box(v, 124, 16, 8, 5, gold);
-    box(v, 121, 20, 14, 5, gold);
-    box(v, 124, 25, 8, 8, gold);
-
-    /* fenêtres */
-    for (int x = 65; x < 195; x += 26)
-    {
-        box(v, x, 23, 14, 15, roof);
-        box(v, x + 2, 25, 10, 11, white);
-    }
-
-    /* escaliers */
-    for (int i = 0; i < 5; i++)
-        box(v, 88 - i * 3, 56 + i * 3, 80 + i * 6, 3, white);
-}
-
-static void drawTop()
-{
-    u16 *v = bgGetGfxPtr(topBg);
-
-    u16 grass = col(85,160,70);
-    u16 path = col(205,165,105);
-    u16 dark = col(30,70,45);
-    u16 white = col(245,245,235);
-    u16 blue = col(25,70,145);
-    u16 panel = col(15,30,55);
-
-    box(v, 0, 0, W, H, grass);
-
-    /* herbe */
-    for (int y = 0; y < H; y += 16)
-        box(v, 0, y, W, 8, col(75,145,65));
-
-    /* chemin */
-    box(v, 82, 48, 92, 144, path);
-
-    /* bordures */
-    box(v, 78, 48, 4, 144, dark);
-    box(v, 174, 48, 4, 144, dark);
-
-    /* arbres */
-    tree(v, 25, 30);
-    tree(v, 55, 72);
-    tree(v, 225, 35);
-    tree(v, 205, 75);
-    tree(v, 25, 145);
-    tree(v, 225, 145);
-
-    /* ecole */
-    school(v);
-
-    /* banc */
-    box(v, 20, 105, 45, 6, col(110,65,35));
-    box(v, 25, 111, 4, 10, col(80,50,30));
-    box(v, 56, 111, 4, 10, col(80,50,30));
-
-    /* portail */
-    box(v, 73, 158, 4, 30, col(80,80,80));
-    box(v, 179, 158, 4, 30, col(80,80,80));
-
-    /* PNJ */
-    person(v, 105, 85, false, false);
-    person(v, 150, 80, false, true);
-    person(v, 175, 110, false, false);
-
-    /* joueur */
-    person(v, px, py, true, false);
-
-    /* panneau de nom */
-    box(v, 8, 8, 100, 24, panel);
-    box(v, 10, 10, 96, 20, blue);
-
-    /* fleche au-dessus du joueur */
-    box(v, px - 4, py - 39, 9, 4, col(255,210,30));
-    box(v, px - 2, py - 35, 5, 3, col(255,210,30));
-
-    /* dialogue */
-    if (dialogue)
-    {
-        box(v, 8, 122, 240, 62, panel);
-        box(v, 10, 124, 236, 2, white);
-        box(v, 10, 155, 236, 2, white);
-        box(v, 18, 128, 55, 20, blue);
-    }
-}
-
-static void drawBottom()
-{
-    u16 *v = bgGetGfxPtr(subBg);
-
-    u16 bg = col(20,35,65);
-    u16 panel = col(30,55,90);
-    u16 blue = col(40,105,190);
-    u16 white = col(240,240,235);
-    u16 green = col(70,170,80);
-    u16 yellow = col(240,190,40);
-
-    box(v, 0, 0, W, H, bg);
-
-    /* carte */
-    box(v, 8, 8, 145, 105, panel);
-    box(v, 12, 12, 137, 97, green);
-
-    /* routes */
-    box(v, 65, 12, 15, 97, col(150,150,145));
-    box(v, 12, 50, 137, 14, col(150,150,145));
-
-    /* college */
-    box(v, 52, 20, 42, 25, blue);
-    box(v, 62, 27, 22, 18, yellow);
-
-    /* position joueur */
-    box(v, 70, 72, 7, 7, white);
-
-    /* panneau objectif */
-    box(v, 160, 8, 88, 55, panel);
-    box(v, 164, 12, 80, 18, col(150,45,45));
-
-    /* boutons */
-    box(v, 160, 70, 88, 25, blue);
-    box(v, 160, 100, 88, 25, blue);
-    box(v, 160, 130, 88, 25, blue);
-    box(v, 160, 160, 88, 25, blue);
-
-    /* icones */
-    box(v, 170, 76, 15, 12, white);
-    box(v, 170, 106, 15, 12, yellow);
-    box(v, 170, 136, 15, 12, white);
-    box(v, 170, 166, 15, 12, white);
-}
-
-int main()
-{
-    videoSetMode(MODE_5_2D);
-    videoSetModeSub(MODE_5_2D);
-
-    vramSetBankA(VRAM_A_MAIN_BG);
-    vramSetBankC(VRAM_C_SUB_BG);
-
-    topBg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0, 0);
-    subBg = bgInitSub(3, BgType_Bmp16, BgSize_B16_256x256, 0, 0);
-
-    while (1)
-    {
-        scanKeys();
-
-        int held = keysHeld();
-        int down = keysDown();
-
-        if (held & KEY_LEFT)
-            px -= 2;
-
-        if (held & KEY_RIGHT)
-            px += 2;
-
-        if (held & KEY_UP)
-            py -= 2;
-
-        if (held & KEY_DOWN)
-            py += 2;
-
-        if (px < 20) px = 20;
-        if (px > 235) px = 235;
-        if (py < 70) py = 70;
-        if (py > 160) py = 160;
-
-        if (down & KEY_A)
-            dialogue = !dialogue;
-
-        if (down & KEY_B)
-            dialogue = false;
-
-        touchPosition t;
-        touchRead(&t);
-
-        if (t.px > 0 && t.px < 110 && t.py > 90 && t.py < 190)
-        {
-            if (t.px < 50)
-                px -= 2;
-            else if (t.px > 75)
-                px += 2;
-
-            if (t.py < 125)
-                py -= 2;
-            else if (t.py > 155)
-                py += 2;
-        }
-
-        drawTop();
-        drawBottom();
-
-        swiWaitForVBlank();
-    }
-
-    return 0;
-}
-EOF
+          #include <nds.h>
+
+          int x = 128;
+          int y = 96;
+
+          void draw()
+          {
+              u16* v = bgGetGfxPtr(0);
+
+              for (int yy = 0; yy < 192; yy++)
+              {
+                  for (int xx = 0; xx < 256; xx++)
+                  {
+                      int r = 50;
+                      int g = 150;
+                      int b = 70;
+
+                      if ((xx / 16) % 2 == 0)
+                          g = 160;
+
+                      v[xx + yy * 256] =
+                          RGB15(r >> 3, g >> 3, b >> 3) | BIT(15);
+                  }
+              }
+
+              for (int yy = y - 12; yy < y + 12; yy++)
+              {
+                  for (int xx = x - 8; xx < x + 8; xx++)
+                  {
+                      if (xx >= 0 && xx < 256 && yy >= 0 && yy < 192)
+                      {
+                          v[xx + yy * 256] =
+                              RGB15(245 >> 3, 245 >> 3, 250 >> 3) | BIT(15);
+                      }
+                  }
+              }
+
+              for (int yy = y - 25; yy < y - 12; yy++)
+              {
+                  for (int xx = x - 9; xx < x + 9; xx++)
+                  {
+                      if (xx >= 0 && xx < 256 && yy >= 0 && yy < 192)
+                      {
+                          v[xx + yy * 256] =
+                              RGB15(245 >> 3, 245 >> 3, 250 >> 3) | BIT(15);
+                      }
+                  }
+              }
+
+              for (int yy = y - 5; yy < y + 3; yy++)
+              {
+                  for (int xx = x - 5; xx < x + 5; xx++)
+                  {
+                      if (xx >= 0 && xx < 256 && yy >= 0 && yy < 192)
+                      {
+                          v[xx + yy * 256] =
+                              RGB15(240 >> 3, 175 >> 3, 130 >> 3) | BIT(15);
+                      }
+                  }
+              }
+
+              for (int yy = y + 3; yy < y + 20; yy++)
+              {
+                  for (int xx = x - 8; xx < x + 8; xx++)
+                  {
+                      if (xx >= 0 && xx < 256 && yy >= 0 && yy < 192)
+                      {
+                          v[xx + yy * 256] =
+                              RGB15(235 >> 3, 245 >> 3, 255 >> 3) | BIT(15);
+                      }
+                  }
+              }
+          }
+
+          int main()
+          {
+              videoSetMode(MODE_5_2D);
+              videoSetModeSub(MODE_5_2D);
+
+              vramSetBankA(VRAM_A_MAIN_BG);
+              vramSetBankC(VRAM_C_SUB_BG);
+
+              int bg = bgInit(
+                  3,
+                  BgType_Bmp16,
+                  BgSize_B16_256x256,
+                  0,
+                  0
+              );
+
+              int sub = bgInitSub(
+                  3,
+                  BgType_Bmp16,
+                  BgSize_B16_256x256,
+                  0,
+                  0
+              );
+
+              while (1)
+              {
+                  scanKeys();
+
+                  int keys = keysHeld();
+
+                  if (keys & KEY_LEFT)
+                      x -= 2;
+
+                  if (keys & KEY_RIGHT)
+                      x += 2;
+
+                  if (keys & KEY_UP)
+                      y -= 2;
+
+                  if (keys & KEY_DOWN)
+                      y += 2;
+
+                  if (x < 15)
+                      x = 15;
+
+                  if (x > 240)
+                      x = 240;
+
+                  if (y < 35)
+                      y = 35;
+
+                  if (y > 160)
+                      y = 160;
+
+                  draw();
+
+                  u16* subScreen = bgGetGfxPtr(sub);
+
+                  for (int yy = 0; yy < 192; yy++)
+                  {
+                      for (int xx = 0; xx < 256; xx++)
+                      {
+                          subScreen[xx + yy * 256] =
+                              RGB15(20 >> 3, 35 >> 3, 65 >> 3) | BIT(15);
+                      }
+                  }
+
+                  swiWaitForVBlank();
+              }
+
+              return 0;
+          }
+          EOF
 
       - name: Compiler
         shell: bash
         run: |
           make
 
-      - name: Envoyer la ROM
+      - name: Recuperer la ROM
         uses: actions/upload-artifact@v4
         with:
-          name: Adriano-DS-Aventure-2D
+          name: Adriano-DS-Test
           path: Adriano-DS.nds
